@@ -1051,9 +1051,9 @@ static int ksu_sys_umount(const char *mnt, int flags)
 #endif
 
 #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-void try_umount(const char *mnt, bool check_mnt, int flags, uid_t uid)
+void ksu_try_umount(const char *mnt, bool check_mnt, int flags, uid_t uid)
 #else
-static void try_umount(const char *mnt, bool check_mnt, int flags)
+static void ksu_try_umount(const char *mnt, bool check_mnt, int flags)
 #endif
 {
 	struct path path;
@@ -1093,16 +1093,16 @@ static void try_umount(const char *mnt, bool check_mnt, int flags)
 void susfs_try_umount_all(uid_t uid) {
 	susfs_try_umount(uid);
 	/* For Legacy KSU only */
-	try_umount("/system", true, 0, uid);
-	try_umount("/system_ext", true, 0, uid);
-	try_umount("/vendor", true, 0, uid);
-	try_umount("/product", true, 0, uid);
-	try_umount("/odm", true, 0, uid);
+	ksu_try_umount("/system", true, 0, uid);
+	ksu_try_umount("/system_ext", true, 0, uid);
+	ksu_try_umount("/vendor", true, 0, uid);
+	ksu_try_umount("/product", true, 0, uid);
+	ksu_try_umount("/odm", true, 0, uid);
 	// - For '/data/adb/modules' we pass 'false' here because it is a loop device that we can't determine whether 
 	//   its dev_name is KSU or not, and it is safe to just umount it if it is really a mountpoint
-	try_umount("/data/adb/modules", false, MNT_DETACH, uid);
+	ksu_try_umount("/data/adb/modules", false, MNT_DETACH, uid);
 	/* For both Legacy KSU and Magic Mount KSU */
-	try_umount("/debug_ramdisk", true, MNT_DETACH, uid);
+	ksu_try_umount("/debug_ramdisk", true, MNT_DETACH, uid);
 }
 #endif
 
@@ -1232,17 +1232,17 @@ out_susfs_try_umount_all:
 #else
 	// fixme: use `collect_mounts` and `iterate_mount` to iterate all mountpoint and
 	// filter the mountpoint whose target is `/data/adb`
-	try_umount("/system", true, 0);
-	try_umount("/vendor", true, 0);
-	try_umount("/product", true, 0);
-	try_umount("/system_ext", true, 0);
+	ksu_try_umount("/system", true, 0);
+	ksu_try_umount("/vendor", true, 0);
+	ksu_try_umount("/product", true, 0);
+	ksu_try_umount("/system_ext", true, 0);
 
 	// try umount modules path
-	try_umount("/data/adb/modules", false, MNT_DETACH);
+	ksu_try_umount("/data/adb/modules", false, MNT_DETACH);
 
 	// try umount ksu temp path
-	try_umount("/debug_ramdisk", false, MNT_DETACH);
-	try_umount("/sbin", false, MNT_DETACH);
+	ksu_try_umount("/debug_ramdisk", false, MNT_DETACH);
+	ksu_try_umount("/sbin", false, MNT_DETACH);
 #endif
 	return 0;
 }

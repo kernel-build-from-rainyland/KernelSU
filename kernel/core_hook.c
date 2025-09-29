@@ -68,9 +68,6 @@ extern void susfs_run_sus_path_loop(uid_t uid);
 #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
 extern bool susfs_is_log_enabled __read_mostly;
 #endif // #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
-#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-extern void susfs_run_try_umount_for_current_mnt_ns(void);
-#endif // #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 static bool susfs_is_umount_for_zygote_system_process_enabled = false;
 static bool susfs_is_umount_for_zygote_iso_service_enabled = false;
@@ -624,18 +621,6 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 				pr_info("susfs: copy_to_user() failed\n");
 			return 0;
 		}
-		if (arg2 == CMD_SUSFS_UMOUNT_FOR_ZYGOTE_ISO_SERVICE) {
-			int error = 0;
-			if (arg3 != 0 && arg3 != 1) {
-				pr_err("susfs: CMD_SUSFS_UMOUNT_FOR_ZYGOTE_ISO_SERVICE -> arg3 can only be 0 or 1\n");
-				return 0;
-			}
-			susfs_is_umount_for_zygote_iso_service_enabled = arg3;
-			pr_info("susfs: CMD_SUSFS_UMOUNT_FOR_ZYGOTE_ISO_SERVICE -> susfs_is_umount_for_zygote_iso_service_enabled: %lu\n", arg3);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
 #endif //#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 		if (arg2 == CMD_SUSFS_ADD_SUS_KSTAT) {
@@ -703,11 +688,6 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
 				pr_info("susfs: copy_to_user() failed\n");
 			return 0;
-		}
-		if (arg2 == CMD_SUSFS_RUN_UMOUNT_FOR_CURRENT_MNT_NS) {
-			int error = 0;
-			susfs_run_try_umount_for_current_mnt_ns();
-			pr_info("susfs: CMD_SUSFS_RUN_UMOUNT_FOR_CURRENT_MNT_NS -> ret: %d\n", error);
 		}
 #endif //#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 #ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
@@ -1051,9 +1031,9 @@ static int ksu_sys_umount(const char *mnt, int flags)
 #endif
 
 #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-void ksu_try_umount(const char *mnt, bool check_mnt, int flags, uid_t uid)
+void try_umount(const char *mnt, bool check_mnt, int flags, uid_t uid)
 #else
-static void ksu_try_umount(const char *mnt, bool check_mnt, int flags)
+static void try_umount(const char *mnt, bool check_mnt, int flags)
 #endif
 {
 	struct path path;
@@ -1093,16 +1073,16 @@ static void ksu_try_umount(const char *mnt, bool check_mnt, int flags)
 void susfs_try_umount_all(uid_t uid) {
 	susfs_try_umount(uid);
 	/* For Legacy KSU only */
-	ksu_try_umount("/system", true, 0, uid);
-	ksu_try_umount("/system_ext", true, 0, uid);
-	ksu_try_umount("/vendor", true, 0, uid);
-	ksu_try_umount("/product", true, 0, uid);
-	ksu_try_umount("/odm", true, 0, uid);
+	try_umount("/system", true, 0, uid);
+	try_umount("/system_ext", true, 0, uid);
+	try_umount("/vendor", true, 0, uid);
+	try_umount("/product", true, 0, uid);
+	try_umount("/odm", true, 0, uid);
 	// - For '/data/adb/modules' we pass 'false' here because it is a loop device that we can't determine whether 
 	//   its dev_name is KSU or not, and it is safe to just umount it if it is really a mountpoint
-	ksu_try_umount("/data/adb/modules", false, MNT_DETACH, uid);
+	try_umount("/data/adb/modules", false, MNT_DETACH, uid);
 	/* For both Legacy KSU and Magic Mount KSU */
-	ksu_try_umount("/debug_ramdisk", true, MNT_DETACH, uid);
+	try_umount("/debug_ramdisk", true, MNT_DETACH, uid);
 }
 #endif
 
@@ -1232,17 +1212,17 @@ out_susfs_try_umount_all:
 #else
 	// fixme: use `collect_mounts` and `iterate_mount` to iterate all mountpoint and
 	// filter the mountpoint whose target is `/data/adb`
-	ksu_try_umount("/system", true, 0);
-	ksu_try_umount("/vendor", true, 0);
-	ksu_try_umount("/product", true, 0);
-	ksu_try_umount("/system_ext", true, 0);
+	try_umount("/system", true, 0);
+	try_umount("/vendor", true, 0);
+	try_umount("/product", true, 0);
+	try_umount("/system_ext", true, 0);
 
 	// try umount modules path
-	ksu_try_umount("/data/adb/modules", false, MNT_DETACH);
+	try_umount("/data/adb/modules", false, MNT_DETACH);
 
 	// try umount ksu temp path
-	ksu_try_umount("/debug_ramdisk", false, MNT_DETACH);
-	ksu_try_umount("/sbin", false, MNT_DETACH);
+	try_umount("/debug_ramdisk", false, MNT_DETACH);
+	try_umount("/sbin", false, MNT_DETACH);
 #endif
 	return 0;
 }

@@ -321,23 +321,12 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 	// Both root manager and root processes should be allowed to get version
 	if (arg2 == CMD_GET_VERSION) {
 		u32 version = KERNEL_SU_VERSION;
-		if (arg3 &&
-		    copy_to_user(arg3, &version, sizeof(version))) {
+		if (copy_to_user(arg3, &version, sizeof(version))) {
 			pr_err("prctl reply error, cmd: %lu\n", arg2);
 		}
-		unsigned int flags = 0;
-		// this is unnecessary since all of this can be detected in userspace.
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
-		flags |= KSU_FLAG_GKI;
-#endif
-#ifdef CONFIG_KSU_MANUAL_HOOK
-		flags |= KSU_FLAG_HOOK_MANUAL;
-#else
+		u32 flags = 0;
 #ifdef MODULE
-		flags |= KSU_FLAG_MODE_LKM;
-#else
-		flags |= KSU_FLAG_HOOK_KP;
-#endif
+		flags |= 0x1;
 #endif
 		if (arg4 &&
 		    copy_to_user(arg4, &flags, sizeof(flags))) {

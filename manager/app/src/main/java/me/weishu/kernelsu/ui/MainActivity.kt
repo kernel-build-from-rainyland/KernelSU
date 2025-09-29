@@ -1,5 +1,6 @@
 package me.weishu.kernelsu.ui
 
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -32,6 +33,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -44,12 +46,14 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.utils.isRouteOnBackStackAsState
 import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.ksuApp
 import me.weishu.kernelsu.ui.screen.BottomBarDestination
+import me.weishu.kernelsu.ui.screen.FlashIt
 import me.weishu.kernelsu.ui.theme.KernelSUTheme
 import me.weishu.kernelsu.ui.util.LocalSnackbarHost
 import me.weishu.kernelsu.ui.util.rootAvailable
@@ -71,6 +75,18 @@ class MainActivity : ComponentActivity() {
         val isManager = Natives.becomeManager(ksuApp.packageName)
         if (isManager) install()
 
+        // Check if launched with a ZIP file
+        val zipUri: ArrayList<Uri>? = if (intent.data != null) {
+            arrayListOf(intent.data!!)
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableArrayListExtra("uris", Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableArrayListExtra("uris")
+            }
+        }
+
         setContent {
             KernelSUTheme {
                 val navController = rememberNavController()
@@ -84,6 +100,18 @@ class MainActivity : ComponentActivity() {
 
                 val bottomBarRoutes = remember {
                     BottomBarDestination.entries.map { it.direction.route }.toSet()
+                }
+
+                val navigator = navController.rememberDestinationsNavigator()
+
+                LaunchedEffect(zipUri) {
+                    if (!zipUri.isNullOrEmpty()) {
+                        navigator.navigate(
+                            FlashScreenDestination(
+                                FlashIt.FlashModules(zipUri)
+                            )
+                        )
+                    }
                 }
 
                 Scaffold(
